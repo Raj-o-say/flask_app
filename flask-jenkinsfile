@@ -1,0 +1,57 @@
+pipeline{
+    agent any
+    
+    environment{
+        GITHUB_REPO = "https://github.com/matkar12/flask-web-app.git"
+        BRANCH_NAME = "master"
+        DOCKER_IMAGE = "flaskapp"
+        DOCKER_IMAGE_TAG = "1.0"
+        MY_DOCKER_CREDENTIALS = credentials("docker-credentials")
+    }
+    
+    stages{
+        
+        stage("Cloning the repository"){
+            steps{
+                git branch: "${BRANCH_NAME}", url: "${GITHUB_REPO}"
+            }
+        }
+        
+        stage("Build the Docker Image"){
+            steps{
+                sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_IMAGE_TAG} ."
+            }
+        } 
+        
+        stage("Login to Docker Hub"){
+            steps{
+                sh "echo $MY_DOCKER_CREDENTIALS_PSW | docker login -u $MY_DOCKER_CREDENTIALS_USR --password-stdin"
+            }
+        } 
+        
+        stage("Tag the Docker image"){
+            steps{
+                sh "docker tag ${DOCKER_IMAGE}:${DOCKER_IMAGE_TAG} matkar12/${DOCKER_IMAGE}:${DOCKER_IMAGE_TAG}"
+            }
+        } 
+        
+        stage("Pushing the Docker image"){
+            steps{
+                sh "docker push matkar12/${DOCKER_IMAGE}:${DOCKER_IMAGE_TAG}"
+            }
+        }
+        
+        stage("Cretaing the kubernetes cluster using kind"){
+            steps{
+                sh "kind create cluster --name flaskcluster --config myconfig.yaml"
+            }
+        }
+        
+        stage("Deploying the Flask app on Kubernetes cluster"){
+            steps{
+                sh "kubectl apply -f flask.yaml"
+            }
+        } 
+    }    
+}
+
