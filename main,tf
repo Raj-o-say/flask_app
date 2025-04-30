@@ -1,0 +1,94 @@
+
+provider "aws"{
+        region="ap-south-1"
+}
+
+
+# CREATE VPC ==> id
+resource "aws_vpc" "project-vpc"{
+        cidr_block="10.0.0.0/16"
+        tags={
+                Name = "MyProjectVPC"
+        }
+}
+
+
+# CREATE FIRST SUBNET
+resource "aws_subnet" "project-subnet-1" {
+    vpc_id = aws_vpc.project-vpc.id
+    cidr_block = "10.0.1.0/28"
+    availability_zone = "ap-south-1a"
+    tags = {
+      Name = "MyFirstPublicSubnet"
+    }
+ 
+}
+
+
+# CREATE SECOND SUBNET
+resource "aws_subnet" "project-subnet-2" {
+  vpc_id = aws_vpc.project-vpc.id
+    cidr_block = "10.0.2.0/28"
+    availability_zone = "ap-south-1a"
+    tags = {
+      Name = "MySecondPublicSubnet"
+    }
+}
+
+
+# CREATE INTERNET GATEWAY
+resource "aws_internet_gateway" "project_ig" {
+    vpc_id = aws_vpc.project-vpc.id
+    tags = {
+      Name = "MyProjectIG"
+    }
+}
+
+
+# CREATE THE ROUTE TABLE
+resource "aws_route_table" "project_rt" {
+    vpc_id = aws_vpc.project-vpc.id
+    route {
+        cidr_block = "0.0.0.0/0"
+        gateway_id = aws_internet_gateway.project_ig.id
+    }
+    tags = {
+      Name = "MyProjectRouteTable"
+    }
+}
+
+
+# ASSOCIATE FIRST SUBNET WITH THE ROUTE TABLE
+resource "aws_route_table_association" "project-subnet-1-association" {
+  subnet_id = aws_subnet.project-subnet-1.id
+  route_table_id = aws_route_table.project_rt.id
+}
+
+
+
+
+# ASSOCIATE SECOND SUBNET WITH THE ROUTE TABLE
+resource "aws_route_table_association" "project-subnet-2-association" {
+  subnet_id = aws_subnet.project-subnet-2.id
+  route_table_id = aws_route_table.project_rt.id
+}
+
+
+# CREATE 4 EC2
+resource "aws_instance" "server" {
+    ami = "ami-0e35ddab05955cf57"
+    instance_type = "t2.micro"
+    key_name = "at"
+   
+    subnet_id = aws_subnet.project-subnet-1.id
+    tags = {
+      Name = "${each.key}"
+    }
+}
+
+
+
+
+
+
+
